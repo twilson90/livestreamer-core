@@ -1,6 +1,7 @@
-const WebSocket = require("ws");
-const path = require("node:path");
-const fs = require("fs-extra");
+import WebSocket from "ws";
+import path from "node:path";
+import fs from "fs-extra";
+import { utils, ClientBase, Logger, core } from "./internal.js";
 
 /** @template {ClientBase} T  */
 class ClientServer {
@@ -9,9 +10,13 @@ class ClientServer {
     clients = {};
     #cid = 0;
     #client_history = {};
+
+    constructor() {
+
+    }
     
     /** @param {WebSocket.Server} wss @param {new () => T} ClientClass */
-    constructor(id, wss, $, ClientClass, auth) {
+    async init(id, wss, $, ClientClass, auth) {
         this.id = id;
         this.clients_filename = path.join(core.clients_dir, id);
 
@@ -19,11 +24,9 @@ class ClientServer {
         this.logger.on("log", (log)=>{
             core.logger.log(log)
         });
-        this.ready = utils.deferred();
         this.wss = wss;
 
         wss.on("connection", async (ws, request)=>{
-            await this.ready;
             var user = null;
             user = await core.authorise(request);
             if (auth && !user) {
@@ -51,11 +54,13 @@ class ClientServer {
             ws.send("ping");
 
             ws.on('message',(data, isBinary)=>{
-                if (data === "pong") {
+                if (isBinary) return;
+                var m = data.toString()
+                if (m === "pong") {
                     alive = true;
                     return;
                 }
-                client._onmessage(data, isBinary);
+                client._onmessage(m);
             });
             ws.on('error',(e)=>{
                 client._onerror(e);
@@ -69,13 +74,9 @@ class ClientServer {
 
         utils.Observer.listen($, c=>this.#$_changes.push(c));
 
-        this.load_history();
+        await this.load_history();
         
         setInterval(()=>this.update_clients(), 100);
-    }
-
-    init() {
-        this.ready.resolve();
     }
 
     async load_history() {
@@ -107,9 +108,4 @@ class ClientServer {
     }
 }
 
-module.exports = ClientServer;
-
-const utils = require("./utils");
-const ClientBase = require("./ClientBase");
-const Logger = require("./Logger");
-const core = require(".");
+export default ClientServer;

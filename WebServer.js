@@ -1,14 +1,10 @@
-const http = require("node:http");
-const https = require("node:https");
-const fs = require("fs-extra");
-const WebSocket = require("ws");
-// const auth = require("basic-auth");
-// const url = require("node:url");
-// const compression = require("compression");
-// const accesslog = require("access-log");
+import http from "node:http";
+import https from "node:https";
+import WebSocket, { WebSocketServer } from "ws";
+import { core } from "./internal.js";
 
 /** @typedef {{http_port:Number, https_port:Number, username:string, password:string, ssl_key:string, ssl_cert:string, socket_path:string, ws:WebSocket.ServerOptions<typeof WebSocket, typeof http.IncomingMessage>}} Config */
-module.exports = class {
+export default class {
     /** @type {http.Server} */
     server;
     /** @param {http.RequestListener<typeof http.IncomingMessage, typeof http.ServerResponse>} handler @param {Config} opts */
@@ -40,7 +36,7 @@ module.exports = class {
         /** @type {https.ServerOptions<typeof http.IncomingMessage, typeof http.ServerResponse>} */
         var http_opts = {};
 
-        core.logger.info(`Starting HTTP server on socket ${core.proxy_socket_path}...`);
+        core.logger.info(`Starting HTTP server on socket ${core.http_socket_path}...`);
         this.server = http.createServer(http_opts, async (req, res)=>{
             // accesslog(req, res, undefined, (l)=>core.logger.debug(l));
             if (opts.auth) {
@@ -57,7 +53,7 @@ module.exports = class {
             // var url = new URL(req.headers.referrer || req.headers.referer);
             // var url = new URL(core.conf["cabtv.site_url"]);
             var allow_origin = opts.allow_origin;
-            // var allow_origin = [...new Set([`${url.protocol}//${url.hostname}:*`, `${url.protocol}//${core.conf["hostname"]}:*`])].join(" ");
+            // var allow_origin = [...new Set([`${url.protocol}//${url.hostname}:*`, `${url.protocol}//${core.conf["core.hostname"]}:*`])].join(" ");
             res.setHeader('Access-Control-Allow-Origin', allow_origin);
             res.setHeader('Access-Control-Allow-Credentials', true);
             res.setHeader('Access-Control-Allow-Methods', 'POST, GET, PUT, DELETE, OPTIONS');
@@ -74,7 +70,7 @@ module.exports = class {
                 handler(req, res);
             }
         });
-        this.server.listen(core.proxy_socket_path);
+        this.server.listen(core.http_socket_path);
         
         if (opts.ws) {
             this.server.on('upgrade', (request, socket, head)=>{
@@ -82,7 +78,7 @@ module.exports = class {
                     this.wss.emit('connection', socket, request);
                 });
             });
-            this.wss = new WebSocket.Server(opts.ws);
+            this.wss = new WebSocketServer(opts.ws);
             this.wss.on("error", (error)=>{
                 core.logger.error(error);
             });
@@ -90,9 +86,6 @@ module.exports = class {
     }
 
     async destroy() {
-        await new Promise(r=>{this.server.close(r); this.server=null;});
+        await new Promise(r=>this.server.close(r));
     }
 }
-
-const core = require(".");
-const utils = require("./utils");

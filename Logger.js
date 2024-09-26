@@ -1,6 +1,7 @@
-const events = require("node:events");
-const fs = require("fs-extra");
-const path = require("node:path");
+import events from "node:events";
+import fs from "fs-extra";
+import path from "node:path";
+import { core, utils } from "./internal.js";
 
 const info = console.info;
 const warn = console.warn;
@@ -31,7 +32,7 @@ class Log {
 					try { m = JSON.stringify(m) } catch {};
 				}
 				if (typeof m !== "string") m = String(m);
-				if (m.length > core.conf["logs_max_msg_length"]) m = m.substr(0, core.conf["logs_max_msg_length"]);
+				if (m.length > core.conf["core.logs_max_msg_length"]) m = m.substr(0, core.conf["core.logs_max_msg_length"]);
 				return m;
 			}).join(" ");
 		}
@@ -82,7 +83,7 @@ class Logger extends events.EventEmitter {
 	log() {
 		let log = this.#process_log(...arguments);
 		if (this.#settings.file) this.#log_to_file(log);
-		if (this.#settings.stdout && (core.conf["debug"] || log.level !== Logger.DEBUG)) this.#log_to_stdout(log);
+		if (this.#settings.stdout && (core.debug || log.level !== Logger.DEBUG)) this.#log_to_stdout(log);
 		this.emit("log", log);
 	}
 	log_to_stdout() { 
@@ -114,6 +115,7 @@ class Logger extends events.EventEmitter {
 	
 	/** @param {Log} log */
 	#log_to_file(log) {
+		if (!core.logs_dir) return;
 		let filename = path.join(core.logs_dir, `${this.name}-${utils.date_to_string(undefined, {time:false})}.log`);
 		if (this.#filename != filename) {
 			this.#end();
@@ -149,7 +151,7 @@ class Logger extends events.EventEmitter {
 			$[id] = log;
 			if (!logs[log.level]) logs[log.level] = [];
 			logs[log.level].push(id);
-			if (logs[log.level].length > core.conf["logs_max_length"]) {
+			if (logs[log.level].length > core.conf["core.logs_max_length"]) {
 				delete $[logs[log.level].shift()];
 			}
 		});
@@ -165,7 +167,5 @@ async function write_header_line(stream, str, len=64) {
 	stream.write(`${"-".repeat(left)}${str}${"-".repeat(right)}\n`);
 }
 
-module.exports = Logger;
-
-const utils = require("./utils");
-const core = require(".");
+export default Logger;
+export { Log };

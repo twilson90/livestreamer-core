@@ -1,52 +1,61 @@
-const path = require("node:path");
-const os = require("node:os");
-const execa = require("execa");
-const events = require("node:events");
-const readline = require("node:readline");
+import os from "node:os";
+import events from "node:events";
+import readline from "node:readline";
+import child_process from "node:child_process";
+import { utils, Logger, core } from "./internal.js";
 
 class FFMPEGWrapper extends events.EventEmitter {
-    /** @type {execa.ExecaChildProcess} */
-    process;
-    logger;
-    #running = false;
+    /** @type {import("child_process").ChildProcessWithoutNullStreams} */
+    #process;
+    #logger;
+    #closed;
+    #running;
 
-    get running() { return this.#running; }
+    get process() { return this.#process; }
+    get logger() { return this.#logger; }
 
     constructor() {
         super();
-        this.logger = new Logger("ffmpeg");
+        this.#logger = new Logger("ffmpeg");
     }
 
-    /** @param {{use_tee_muxer:boolean, use_fifo:boolean, outputs:string[]}} options */
-    start(args) {
-        if (this.#running) return;
-
-        this.logger.info("Starting FFMPEG...");
-        this.logger.debug("FFMPEG args:", args);
-        this.process = execa(core.conf["ffmpeg_executable"], args);
+    /** @param {string[]} args @param {child_process.SpawnOptionsWithoutStdio} opts */
+    start(args, opts) {
+        this.#closed = false;
         this.#running = true;
+        
+        this.#logger.info("Starting FFMPEG...");
+        this.#logger.debug("FFMPEG args:", args);
+        
+        this.#process = child_process.spawn(core.conf["core.ffmpeg_executable"], args, {windowsHide: true, ...opts});
 
-        core.set_priority(this.process.pid, os.constants.priority.PRIORITY_HIGHEST);
+        core.set_priority(this.#process.pid, os.constants.priority.PRIORITY_HIGHEST);
 
-        this.process.catch((e)=>{
-            if (!this.#running) return;
-            this.logger.error("ffmpeg fatal error:", e);
+        this.#process.on("error", (e) => {
+            // must consume errors! om nom nom
+            if (this.#closed) return;
+            this.#logger.error(e);
+            this.emit("error", e.message);
             this.stop();
         });
-        this.process.on("error", (e) => {
-            this.logger.error("ffmpeg error:", e);
-            this.emit("error", e);
-        });
-        this.process.on("close", (code) => {
+        this.#process.on("close", (code) => {
+            this.#closed = true;
             this.#running = false;
             this.emit("end");
         });
+        // this.#process.on("exit", () => {});
+        // this.#process.stderr.on("error", (e)=>console.error("ffmpeg stderr error", e));
+        // this.#process.stdin.on("error",  (e)=>console.error("ffmpeg stdin error", e));
+        // this.#process.stdout.on("error", (e)=>console.error("ffmpeg stdout error", e));
+        // this.#process.stderr.on("close", (e)=>{});
+        // this.#process.stdin.on("close",  (e)=>{});
+        // this.#process.stdout.on("close", (e)=>{});
 
         let last_info, last_ts;
-        let listener = readline.createInterface(this.process.stderr);
+        let listener = readline.createInterface(this.#process.stderr);
         listener.on("line", line=>{
             if (line.startsWith("[fifo")) return;
-            this.logger.debug(line);
+            this.#logger.debug(line);
             this.emit("line", line);
             var m = line.match(/^(?:frame=\s*(.+?) )?(?:fps=\s*(.+?) )?(?:q=\s*(.+?) )?size=\s*(.+?) time=\s*(.+?) bitrate=\s*(.+?) speed=(.+?)x/);
             if (m) {
@@ -69,30 +78,18 @@ class FFMPEGWrapper extends events.EventEmitter {
                 last_ts = ts;
             }
         });
-
-        return this.process;
     }
 
     stop() {
-        if (!this.#running) return;
+        if (this.#running) return;
         this.#running = false;
-        this.process.kill();
-        /* if (!this.process.stdout.destroyed) {
-            await new Promise(resolve=>{
-                this.process.once("close", resolve);
-                tree_kill(this.process.pid, "SIGKILL");
-            });
-        } */
+        this.#process.kill();
     }
 
     destroy() {
         this.stop();
-        this.logger.destroy();
+        this.#logger.destroy();
     }
 }
 
-module.exports = FFMPEGWrapper;
-
-const utils = require("./utils");
-const Logger = require("./Logger");
-const core = require(".");
+export default FFMPEGWrapper;

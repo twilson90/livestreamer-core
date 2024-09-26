@@ -1,4 +1,5 @@
-const events = require("node:events");
+import events from "node:events";
+import { utils } from "./internal.js";
 
 class DataNode extends events.EventEmitter {
     $ = new utils.Observer();
@@ -6,7 +7,7 @@ class DataNode extends events.EventEmitter {
 
     constructor(id) {
         super();
-        if (id == null) id = utils.uuidb64();
+        if (id == null) id = utils.uuid4();
         else id = String(id);
         this.$.id = id;
     }
@@ -32,6 +33,4 @@ class DataNode extends events.EventEmitter {
         return `[${this.constructor.name}:${this.id}]`;
     }
 }
-module.exports = DataNode;
-
-const utils = require("./utils");
+export default DataNode;

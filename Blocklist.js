@@ -1,5 +1,6 @@
-const fs = require("node:fs");
-const chokidar = require("chokidar");
+import fs from "node:fs";
+import chokidar from "chokidar";
+import { utils } from "./internal.js";
 
 /* function handle_input(c) {
     if (typeof c === "string") {
@@ -92,8 +93,4 @@ class Blocklist {
         this.#watcher = null;
     }
 }
-
-module.exports = Blocklist;
-
-const utils = require("./utils");
-const core = require(".");
+export default Blocklist;

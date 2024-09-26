@@ -1,4 +1,4 @@
-const os = require("node:os");
+import os from "node:os";
 
 //Create function to get CPU information
 function cpuAverage() {
@@ -14,7 +14,7 @@ function cpuAverage() {
     var cpu = cpus[i];
 
     //Total up the time in the cores tick
-    for (type in cpu.times) {
+    for (var type in cpu.times) {
       totalTick += cpu.times[type];
     }
 
@@ -59,4 +59,4 @@ function getCPULoadAVG(avgTime = 1000, delay = 100) {
   });
 }
 
-module.exports = {getCPULoadAVG};
+export default {getCPULoadAVG};

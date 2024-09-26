@@ -1,6 +1,6 @@
-const http = require("node:http");
-const WebSocket = require("ws");
-const DataNode = require("./DataNode");
+import http from "node:http";
+import WebSocket from "ws";
+import { core, utils, DataNode, Logger, ClientServer } from "./internal.js";
 
 class ClientBase extends DataNode {
 
@@ -8,6 +8,7 @@ class ClientBase extends DataNode {
     get ip_hash() { return this.$.ip_hash; }
     get username() { return this.$.username; }
     get is_admin() { return !!this.$.is_admin; }
+    #initialized = false;
 
     /**
      * @param {ClientServer} server
@@ -20,6 +21,7 @@ class ClientBase extends DataNode {
         this.server = server;
         this.ws = ws;
         this.request = req;
+        this.url = new URL("http://localhost"+req.url);
         
         var ip = (req.headers['x-forwarded-for'] || req.socket.remoteAddress).split(",")[0];
 
@@ -31,18 +33,11 @@ class ClientBase extends DataNode {
             ip_hash: utils.md5(ip),
             init_ts: Date.now(),
         });
-        if (userdata) {
+        if (userdata && typeof userdata === "object") {
             Object.assign(this.$, userdata);
         }
 
         this.logger.info(`${JSON.stringify(this.$)} connected`);
-
-        this.send({
-            init:{
-                ts: Date.now(),
-                client_id: this.id,
-            }
-        });
     }
     
 
@@ -51,30 +46,28 @@ class ClientBase extends DataNode {
         this.destroy();
     }
 
-    async _onmessage(m, isBinary) {
+    async _onmessage(m) {
         this.logger.debug(`message: ${m}`);
         var request;
-        if (typeof m === "string") {
-            try {
-                request = JSON.parse(m);
-            } catch {
-                this.logger.warn("Bad request.");
-                return;
-            }
-        } else if (m instanceof Buffer) {
-            // hmm
+        try {
+            request = JSON.parse(m);
+        } catch {
+            this.logger.warn("Bad request.");
             return;
         }
         var request_id = request.__id__;
         var result, error;
         // var fn_path = Array.isArray(request.path) ? request.path : String(request.path).split(/[\.\/]+/);
-        try {
+        var run = ()=>{
             if (request.call) result = utils.call(this, request.call, request.arguments);
             else if (request.get) result = utils.get(this, request.get);
             else if (request.set) result = utils.set(this, request.set, request.value);
             else error = `Invalid request: ${JSON.stringify(request)}`;
-        } catch (e) {
-            error = e;
+        };
+        if (core.debug) {
+            run();
+        } else {
+            try { run(); } catch (e) { error = e; }
         }
         result = await Promise.resolve(result).catch(e=>{
             error = e;
@@ -97,8 +90,15 @@ class ClientBase extends DataNode {
 
     init() { return new Error("Not implemented."); }
 
-    send(data) {
-        this.ws.send(JSON.stringify(data, (k,v)=>(v===undefined)?null:v));
+    send(d) {
+        if (!this.#initialized) {
+            this.#initialized = true;
+            d.init = {
+                client_id: this.id,
+                ts: Date.now(),
+            }
+        }
+        this.ws.send(JSON.stringify(d, (k,v)=>(v===undefined)?null:v));
     }
 
     destroy() {
@@ -107,9 +107,4 @@ class ClientBase extends DataNode {
     }
 }
 
-module.exports = ClientBase;
-
-const utils = require("./utils");
-const Logger = require("./Logger");
-const ClientServer = require("./ClientServer");
-const core = require(".");
+export default ClientBase;

@@ -1,5 +1,7 @@
-const path = require("node:path");
-const fs = require("fs-extra");
+import path from "node:path";
+import fs from "fs-extra";
+import { core } from "./internal.js";
+
 class Cache {
     #cache = {};
     #default_expire = 0;
@@ -47,6 +49,4 @@ class Cache {
         return undefined;
     }
 }
-module.exports = Cache;
-
-const core = require(".");
+export default Cache;

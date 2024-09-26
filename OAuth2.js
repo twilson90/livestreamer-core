@@ -1,8 +1,9 @@
-const express = require("express");
-const events = require("node:events");
-const fs = require("fs-extra");
-const path = require("node:path");
-const fetch = require("node-fetch");
+import express from "express";
+import events from "node:events";
+import fs from "fs-extra";
+import path from "node:path";
+import fetch from "node-fetch";
+import { core, utils, Logger } from "./internal.js";
 
 const oauth2_path = "/oauth2";
 
@@ -199,8 +200,4 @@ class OAuth2 extends events.EventEmitter {
     }
 }
 
-module.exports = OAuth2;
-
-const core = require(".");
-const utils = require("./utils");
-const Logger = require("./Logger");
+export default OAuth2;

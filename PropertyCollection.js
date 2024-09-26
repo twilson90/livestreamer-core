@@ -1,3 +1,4 @@
+import { utils } from "./internal.js";
 class PropertyCollection {
     __get_defaults() {
         return Object.fromEntries(
@@ -16,6 +17,4 @@ class PropertyCollection {
     }
 }
 
-module.exports = PropertyCollection;
-
-const utils = require("./utils");
+export default PropertyCollection;
