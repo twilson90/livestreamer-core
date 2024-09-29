@@ -5,7 +5,6 @@ import * as uuid from "uuid";
 import is_image from "is-image";
 import { execa } from "execa";
 import file_url from "file-url";
-import { parse } from "shell-quote";
 import { createRequire } from "module";
 import child_process, { ChildProcess } from "node:child_process";
 
@@ -14,6 +13,7 @@ const node_require = createRequire(import.meta.url);
 import * as utils from "@hedgehog90/utils";
 
 export * from "@hedgehog90/utils";
+export * from "node:util";
 
 export function is_windows() { return process.platform === "win32"; }
 

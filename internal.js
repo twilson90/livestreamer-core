@@ -12,6 +12,7 @@ import MPVWrapper from "./MPVWrapper.js";
 import OAuth2 from "./OAuth2.js";
 import PropertyCollection from "./PropertyCollection.js";
 import WebServer from "./WebServer.js";
+import IPC from "./IPC.js";
 import core from "./index.js";
 
-export { Blocklist, Cache, ClientBase, ClientServer, ConfigLoader, CPU, DataNode, FFMPEGWrapper, Logger, MPVWrapper, OAuth2, PropertyCollection, utils, WebServer, core }
+export { Blocklist, Cache, ClientBase, ClientServer, ConfigLoader, CPU, DataNode, FFMPEGWrapper, Logger, MPVWrapper, OAuth2, PropertyCollection, utils, WebServer, IPC, core }
